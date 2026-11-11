@@ -284,17 +284,25 @@ class Transformer:
             > self.target_height / source_height
         ):
             crop_width = source_width
-            crop_height = int(
-                round(source_width * self.target_height / target_width, 0)
+            crop_height = max(
+                1,
+                int(
+                    round(
+                        source_width * self.target_height / target_width, 0
+                    )
+                ),
             )
         else:
-            crop_width = int(
-                round(
-                    math.ceil(
-                        self.target_width * source_height / target_height
-                    ),
-                    0,
-                )
+            crop_width = max(
+                1,
+                int(
+                    round(
+                        math.ceil(
+                            self.target_width * source_height / target_height
+                        ),
+                        0,
+                    )
+                ),
             )
             crop_height = source_height
 
@@ -375,6 +383,10 @@ class Transformer:
             self.target_width = self.target_height
             self.target_height = tmp
 
+        # a zero target (e.g. a height that rounds to 0) would divide by zero
+        self.target_width = max(self.target_width or 1, 1)
+        self.target_height = max(self.target_height or 1, 1)
+
         sign = 1
         if self.context.request.full:
             sign = -1
@@ -417,7 +429,8 @@ class Transformer:
         self.context.request.width = int(max(requested_width, resize_width))
         self.context.request.height = int(max(requested_height, resize_height))
 
-        self.engine.resize(resize_width, resize_height)
+        # rounding can give 0 for very thin sources (e.g. 940x2 at width 100)
+        self.engine.resize(max(resize_width, 1), max(resize_height, 1))
 
     def debug(self):
         if not self.context.request.focal_points:
